@@ -1,3 +1,4 @@
+import streamlit as st
 from langchain.llms.base import LLM
 import dashscope
 from dashscope import Generation
@@ -7,18 +8,17 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from http import HTTPStatus
 import dotenv
 
-
+# 加载环境变量
 dotenv.load_dotenv('../.env')
 
 qwen_apikey = 'sk-369fb75bfd5b46a4b59e753cda200950'
 dashscope.api_key = qwen_apikey
+
 def call_with_messages(content):
     messages = [{'role': 'user', 'content': content}]
     response = Generation.call(model="qwen2-72b-instruct",
                                 messages=messages,
-                                # 设置随机数种子seed，如果没有设置，则随机数种子默认为1234
                                 seed=random.randint(1, 10000),
-                                # 将输出设置为"message"格式
                                 result_format='message')
     if response.status_code == HTTPStatus.OK:
         return response["output"]["choices"][0]["message"]["content"]
@@ -27,20 +27,37 @@ def call_with_messages(content):
             response.request_id, response.status_code,
             response.code, response.message
         ))
+
 class Qwen_API(LLM):
     def __init__(self):
         super().__init__()
-    def _call(self, prompt : str, stop: Optional[List[str]] = None,
-                run_manager: Optional[CallbackManagerForLLMRun] = None,
-                **kwargs: Any):
-        # 调用call_with_messages函数，传入prompt参数
+
+    def _call(self, prompt: str, stop: Optional[List[str]] = None,
+              run_manager: Optional[CallbackManagerForLLMRun] = None,
+              **kwargs: Any):
         response = call_with_messages(prompt)
-        # 返回response
         return response
-    # 获取llm_type属性
+
     @property
     def _llm_type(self) -> str:
-        # 返回"Qwen_API"
         return "Qwen_API"
+
+# 初始化Qwen_API实例
 llm = Qwen_API()
-print(llm("你好"))
+
+# Streamlit 应用程序开始
+st.title("Qwen API Chatbot")
+
+# 创建一个文本输入框供用户提问
+user_input = st.text_input("You:", "")
+
+# 检查用户是否输入了内容，并在按下Enter键后发送请求
+if user_input:
+    # 显示用户的输入
+    st.text_area("Your message:", value=user_input, height=100, max_chars=None, key='user_message')
+
+    # 调用Qwen_API获取回复
+    response = llm._call(user_input)
+
+    # 显示AI的回复
+    st.text_area("Qwen's reply:", value=response, height=200, max_chars=None, key='ai_reply')
