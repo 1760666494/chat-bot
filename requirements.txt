@@ -1,0 +1,4 @@
+python_dotenv
+dashscope
+dashscope[generation]
+langchain
